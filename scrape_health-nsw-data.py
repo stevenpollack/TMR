@@ -18,7 +18,7 @@ table = []
 # 2. if we get any hits, save the <p> with the first relevant phrase, save the newsdate, and then save the url
 # 3. write the results to a table
 
-regexp = re.compile("""(Intensive Care Unit)|(ventilator)|(COVID-19 cases being treated by NSW Health)""", re.I)
+regexp = re.compile("""(death)|(Intensive Care Unit)|(ventilator)|(COVID-19 cases being treated by NSW Health)""", re.I)
 relevant_ps = []
 for link in links:
   link_text = requests.get(link).text
