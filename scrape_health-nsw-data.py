@@ -2,6 +2,7 @@
 import requests, re, csv
 from bs4 import BeautifulSoup
 
+# scrape the URLs to all health.NSW.gov.au press releases:
 url = "https://www.health.nsw.gov.au/news/Pages/2020-nsw-health.aspx"
 page = requests.get(url)
 soup = BeautifulSoup(page.text, 'html.parser')
@@ -13,24 +14,30 @@ links = [a.get('href') for a in a_tags]
 verbose = False
 table = []
 
-with open('nsw_stats.csv', 'w', newline='', encoding='utf-8') as csvfile:
+# 1. search each URL for key phrases.
+# 2. if we get any hits, save the <p> with the first relevant phrase, save the newsdate, and then save the url
+# 3. write the results to a table
+
+regexp = re.compile("""(Intensive Care Unit)|(ventilator)|(COVID-19 cases being treated by NSW Health)""", re.I)
+relevant_ps = []
+for link in links:
+  link_text = requests.get(link).text
+  html = BeautifulSoup(link_text, 'html.parser')
+  p_tags = html.findAll('p', string=regexp)
+  
+  # break early
+  if not p_tags:
+    continue
+  
+  relevant_text = "".join([p_tag.get_text(strip=True) for p_tag in p_tags])
+
+  newsdate = html.find('div', class_='newsdate').get_text(strip=True)
+
+  table.append([link, newsdate, relevant_text])
+
+
+with open('nsw_icu_stats.csv', 'w', newline='', encoding='utf-8') as csvfile:
   csvfile.flush()
   writer = csv.writer(csvfile, delimiter='|', quotechar='"', quoting=csv.QUOTE_MINIMAL)
-  
-  for link in links:
-    nsw_page = BeautifulSoup(requests.get(link).text, 'html.parser')
-    pubdate = re.search('(2020)(\d\d)(\d\d)', link)
-    pubdate = "-".join([pubdate.group(i) for i in [1,2,3]])
-    pubdate = [link, pubdate]
-    if verbose:
-      print(pubdate)
-      print(nsw_page.find('table', class_="moh-rteTable-6").find_all('tr')[1:])
-    
-    for row in nsw_page.find('table', class_="moh-rteTable-6").find_all('tr')[1:]:
-      row_data = pubdate + [td.get_text().strip() for td in row.find_all('td')]
-      table.append(row_data)
-      writer.writerow(row_data)
-    
-  #writer.writerows(table)
-print(table)
-csvfile.close()
+  writer.writerows(table)
+  csvfile.close()
